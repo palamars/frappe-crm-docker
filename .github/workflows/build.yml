@@ -32,6 +32,14 @@ jobs:
       - name: Copy apps.json into build context
         run: cp apps.json frappe_docker/apps.json
 
+      - name: Resolve latest commit of the CRM fork (for cache busting)
+        id: crm-sha
+        run: |
+          url=$(python3 -c "import json;print(json.load(open('apps.json'))[0]['url'])")
+          branch=$(python3 -c "import json;print(json.load(open('apps.json'))[0]['branch'])")
+          sha=$(git ls-remote "$url" "refs/heads/$branch" | cut -f1)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -53,7 +61,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           build-args: |
             FRAPPE_BRANCH=version-16
-            CACHE_BUST=${{ github.sha }}
+            CACHE_BUST=${{ steps.crm-sha.outputs.sha }}
           secret-files: |
             apps_json=frappe_docker/apps.json
           cache-from: type=gha
