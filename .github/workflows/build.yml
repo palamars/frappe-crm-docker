@@ -32,13 +32,19 @@ jobs:
       - name: Copy apps.json into build context
         run: cp apps.json frappe_docker/apps.json
 
-      - name: Resolve latest commit of the CRM fork (for cache busting)
+      - name: Resolve latest commit of every app (for cache busting)
         id: crm-sha
         run: |
-          url=$(python3 -c "import json;print(json.load(open('apps.json'))[0]['url'])")
-          branch=$(python3 -c "import json;print(json.load(open('apps.json'))[0]['branch'])")
-          sha=$(git ls-remote "$url" "refs/heads/$branch" | cut -f1)
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          combined=""
+          count=$(python3 -c "import json;print(len(json.load(open('apps.json'))))")
+          for idx in $(seq 0 $((count - 1))); do
+            url=$(python3 -c "import json;print(json.load(open('apps.json'))[$idx]['url'])")
+            branch=$(python3 -c "import json;print(json.load(open('apps.json'))[$idx]['branch'])")
+            sha=$(git ls-remote "$url" "refs/heads/$branch" | cut -f1)
+            combined="${combined}${sha}"
+          done
+          hash=$(echo -n "$combined" | sha256sum | cut -d' ' -f1)
+          echo "sha=$hash" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
