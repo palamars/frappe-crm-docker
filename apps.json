@@ -1,6 +1,5 @@
 [
   { "url": "https://github.com/palamars/crm", "branch": "main" },
   { "url": "https://github.com/frappe/gameplan", "branch": "main" },
-  { "url": "https://github.com/frappe/flow", "branch": "develop" },
-  { "url": "https://github.com/frappe/otto", "branch": "develop" }
+  { "url": "https://github.com/frappe/flow", "branch": "develop" }
 ]
