@@ -1,0 +1,60 @@
+name: Build and push custom Frappe CRM image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps.json
+      - .github/workflows/build.yml
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/frappe-crm
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout this repo (apps.json)
+        uses: actions/checkout@v4
+
+      - name: Checkout frappe_docker (always latest)
+        uses: actions/checkout@v4
+        with:
+          repository: frappe/frappe_docker
+          path: frappe_docker
+
+      - name: Copy apps.json into build context
+        run: cp apps.json frappe_docker/apps.json
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: frappe_docker
+          file: frappe_docker/images/layered/Containerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:16
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          build-args: |
+            FRAPPE_BRANCH=version-16
+            CACHE_BUST=${{ github.sha }}
+          secret-files: |
+            apps_json=frappe_docker/apps.json
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
