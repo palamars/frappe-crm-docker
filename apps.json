@@ -1,5 +1,5 @@
 [
-  { "url": "https://github.com/palamars/crm", "branch": "main" },
-  { "url": "https://github.com/frappe/flow", "branch": "develop" },
-  { "url": "https://github.com/buildswithpaul/Frappe_Assistant_Core", "branch": "main" }
+  { "name": "CRM", "url": "https://github.com/palamars/crm", "branch": "main" },
+  { "name": "FLOW", "url": "https://github.com/frappe/flow", "branch": "develop" },
+  { "name": "ASSISTANT", "url": "https://github.com/buildswithpaul/Frappe_Assistant_Core", "branch": "main" }
 ]
