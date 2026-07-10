@@ -48,6 +48,23 @@ ARG ASSISTANT_CACHE_BUST=""
 RUN : "${ASSISTANT_CACHE_BUST}" && \
   bench get-app --branch ${ASSISTANT_BRANCH} ${ASSISTANT_URL} --skip-assets
 
+ARG DOCK_URL=https://github.com/tonic-6101/dock
+ARG DOCK_BRANCH=develop
+ARG DOCK_CACHE_BUST=""
+# Dock Settings ships with issingle:0 upstream even though dock/orga's own code
+# treats it as a Single - https://github.com/tonic-6101/dock/issues/1. Patch it
+# here so the fix survives image rebuilds instead of being reapplied by hand.
+RUN : "${DOCK_CACHE_BUST}" && \
+  bench get-app --branch ${DOCK_BRANCH} ${DOCK_URL} --skip-assets && \
+  sed -i 's/"engine": "InnoDB",/"engine": "InnoDB",\n "issingle": 1,/' \
+    apps/dock/dock/dock/doctype/dock_settings/dock_settings.json
+
+ARG ORGA_URL=https://github.com/tonic-6101/orga
+ARG ORGA_BRANCH=main
+ARG ORGA_CACHE_BUST=""
+RUN : "${ORGA_CACHE_BUST}" && \
+  bench get-app --branch ${ORGA_BRANCH} ${ORGA_URL} --skip-assets
+
 # Asset build for everything installed above - the only step that must rerun
 # whenever any single app layer changed, but it no longer re-clones/re-pip-installs
 # the apps that didn't change.

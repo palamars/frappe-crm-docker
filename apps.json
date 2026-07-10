@@ -1,5 +1,7 @@
 [
   { "name": "CRM", "url": "https://github.com/palamars/crm", "branch": "main" },
   { "name": "FLOW", "url": "https://github.com/frappe/flow", "branch": "develop" },
-  { "name": "ASSISTANT", "url": "https://github.com/buildswithpaul/Frappe_Assistant_Core", "branch": "main" }
+  { "name": "ASSISTANT", "url": "https://github.com/buildswithpaul/Frappe_Assistant_Core", "branch": "main" },
+  { "name": "DOCK", "url": "https://github.com/tonic-6101/dock", "branch": "develop" },
+  { "name": "ORGA", "url": "https://github.com/tonic-6101/orga", "branch": "main" }
 ]

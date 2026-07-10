@@ -81,5 +81,11 @@ jobs:
             ASSISTANT_URL=${{ steps.resolve.outputs.ASSISTANT_url }}
             ASSISTANT_BRANCH=${{ steps.resolve.outputs.ASSISTANT_branch }}
             ASSISTANT_CACHE_BUST=${{ steps.resolve.outputs.ASSISTANT_sha }}
+            DOCK_URL=${{ steps.resolve.outputs.DOCK_url }}
+            DOCK_BRANCH=${{ steps.resolve.outputs.DOCK_branch }}
+            DOCK_CACHE_BUST=${{ steps.resolve.outputs.DOCK_sha }}
+            ORGA_URL=${{ steps.resolve.outputs.ORGA_url }}
+            ORGA_BRANCH=${{ steps.resolve.outputs.ORGA_branch }}
+            ORGA_CACHE_BUST=${{ steps.resolve.outputs.ORGA_sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
