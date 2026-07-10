@@ -1,7 +1,7 @@
 ARG FRAPPE_BRANCH=version-16
 ARG FRAPPE_IMAGE_PREFIX=frappe
 
-FROM ${FRAPPE_IMAGE_PREFIX}/build:${FRAPPE_BRANCH} AS builder
+FROM ${FRAPPE_IMAGE_PREFIX}/build:${FRAPPE_BRANCH} AS bench-base
 
 ARG FRAPPE_BRANCH=version-16
 ARG FRAPPE_PATH=https://github.com/frappe/frappe
@@ -24,30 +24,37 @@ RUN : "${FRAPPE_CACHE_BUST}" && \
 
 WORKDIR /home/frappe/frappe-bench
 
-# One RUN layer per app - each has its own cache-bust arg (that app's resolved
-# HEAD sha, computed in build.yml), so a commit to one app no longer forces a
-# re-clone+reinstall of the others. Keep this block in sync with apps.json:
-# adding/removing an app here means adding/removing both the matching entry
-# in apps.json and the corresponding build-arg trio in build.yml.
+# --- One independent build stage per app, all forked from bench-base. Because
+# these stages don't depend on each other, BuildKit both caches and (where
+# runner CPU allows) executes them in parallel, and adding/removing/reordering
+# an app here never invalidates any other app's cache - unlike a single RUN
+# chain, where every app after the changed one would also be forced to rerun.
+# To add an app: add its own app-<name> stage below, then a COPY+pip line in
+# the "assembled" stage, then a matching apps.json entry + build-arg trio in
+# build.yml. ---
 
+FROM bench-base AS app-crm
 ARG CRM_URL=https://github.com/palamars/crm
 ARG CRM_BRANCH=main
 ARG CRM_CACHE_BUST=""
 RUN : "${CRM_CACHE_BUST}" && \
   bench get-app --branch ${CRM_BRANCH} ${CRM_URL} --skip-assets
 
+FROM bench-base AS app-flow
 ARG FLOW_URL=https://github.com/frappe/flow
 ARG FLOW_BRANCH=develop
 ARG FLOW_CACHE_BUST=""
 RUN : "${FLOW_CACHE_BUST}" && \
   bench get-app --branch ${FLOW_BRANCH} ${FLOW_URL} --skip-assets
 
+FROM bench-base AS app-assistant
 ARG ASSISTANT_URL=https://github.com/buildswithpaul/Frappe_Assistant_Core
 ARG ASSISTANT_BRANCH=main
 ARG ASSISTANT_CACHE_BUST=""
 RUN : "${ASSISTANT_CACHE_BUST}" && \
   bench get-app --branch ${ASSISTANT_BRANCH} ${ASSISTANT_URL} --skip-assets
 
+FROM bench-base AS app-dock
 ARG DOCK_URL=https://github.com/tonic-6101/dock
 ARG DOCK_BRANCH=develop
 ARG DOCK_CACHE_BUST=""
@@ -59,16 +66,36 @@ RUN : "${DOCK_CACHE_BUST}" && \
   sed -i 's/"engine": "InnoDB",/"engine": "InnoDB",\n "issingle": 1,/' \
     apps/dock/dock/dock/doctype/dock_settings/dock_settings.json
 
+FROM bench-base AS app-orga
 ARG ORGA_URL=https://github.com/tonic-6101/orga
 ARG ORGA_BRANCH=main
 ARG ORGA_CACHE_BUST=""
 RUN : "${ORGA_CACHE_BUST}" && \
   bench get-app --branch ${ORGA_BRANCH} ${ORGA_URL} --skip-assets
 
-# Asset build for everything installed above - the only step that must rerun
-# whenever any single app layer changed, but it no longer re-clones/re-pip-installs
-# the apps that didn't change.
-RUN echo "{}" > sites/common_site_config.json && \
+# --- Merge stage: bring every app's cloned+pip/yarn-installed source together
+# (cheap layer copies), re-register each into this stage's own venv (no
+# network clone/yarn needed here, just editable-install bookkeeping), then
+# build assets once for everything - the one step that always reruns when any
+# app changed, but it no longer forces a re-clone/re-yarn of the others. ---
+
+FROM bench-base AS assembled
+
+COPY --from=app-crm --chown=frappe:frappe /home/frappe/frappe-bench/apps/crm apps/crm
+COPY --from=app-flow --chown=frappe:frappe /home/frappe/frappe-bench/apps/flow apps/flow
+COPY --from=app-assistant --chown=frappe:frappe /home/frappe/frappe-bench/apps/frappe_assistant_core apps/frappe_assistant_core
+COPY --from=app-dock --chown=frappe:frappe /home/frappe/frappe-bench/apps/dock apps/dock
+COPY --from=app-orga --chown=frappe:frappe /home/frappe/frappe-bench/apps/orga apps/orga
+
+RUN uv pip install --quiet \
+    -e apps/crm \
+    -e apps/flow \
+    -e apps/frappe_assistant_core \
+    -e apps/dock \
+    -e apps/orga \
+    --python /home/frappe/frappe-bench/env/bin/python && \
+  printf 'frappe\ncrm\nflow\nfrappe_assistant_core\ndock\norga\n' > sites/apps.txt && \
+  echo "{}" > sites/common_site_config.json && \
   bench build && \
   find apps -mindepth 1 -path "*/.git" | xargs rm -fr
 
@@ -76,7 +103,7 @@ FROM ${FRAPPE_IMAGE_PREFIX}/base:${FRAPPE_BRANCH} AS backend
 
 USER frappe
 
-COPY --from=builder --chown=frappe:frappe /home/frappe/frappe-bench /home/frappe/frappe-bench
+COPY --from=assembled --chown=frappe:frappe /home/frappe/frappe-bench /home/frappe/frappe-bench
 
 WORKDIR /home/frappe/frappe-bench
 
