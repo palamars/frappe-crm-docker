@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - apps.json
+      - Containerfile
       - .github/workflows/build.yml
   workflow_dispatch:
 
