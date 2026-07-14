@@ -44,8 +44,17 @@ FROM bench-base AS app-flow
 ARG FLOW_URL=https://github.com/frappe/flow
 ARG FLOW_BRANCH=develop
 ARG FLOW_CACHE_BUST=""
+# litellm>=1.92 ships a mandatory Rust extension (pyo3-ffi) that doesn't yet
+# support this image's Python (3.14), which breaks `bench get-app`'s own
+# unconstrained dependency resolution. flow's own constraint on litellm
+# (>=1.83.0,<2) is loose enough that pinning below 1.92 still satisfies it,
+# and 1.91.3 is the last pure-Python release (no Rust build needed at all),
+# so clone flow ourselves and install it with that upper bound instead of
+# letting `bench get-app` pick the newest (currently broken) version.
 RUN : "${FLOW_CACHE_BUST}" && \
-  bench get-app --branch ${FLOW_BRANCH} ${FLOW_URL} --skip-assets
+  git clone --branch ${FLOW_BRANCH} --depth 1 --origin upstream ${FLOW_URL} apps/flow && \
+  echo "litellm<1.92" > /tmp/flow-constraints.txt && \
+  uv pip install --quiet -e apps/flow -c /tmp/flow-constraints.txt --python /home/frappe/frappe-bench/env/bin/python
 
 FROM bench-base AS app-assistant
 ARG ASSISTANT_URL=https://github.com/buildswithpaul/Frappe_Assistant_Core
