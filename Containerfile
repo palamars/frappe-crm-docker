@@ -96,12 +96,14 @@ COPY --from=app-assistant --chown=frappe:frappe /home/frappe/frappe-bench/apps/f
 COPY --from=app-dock --chown=frappe:frappe /home/frappe/frappe-bench/apps/dock apps/dock
 COPY --from=app-orga --chown=frappe:frappe /home/frappe/frappe-bench/apps/orga apps/orga
 
-RUN uv pip install --quiet \
+RUN echo "litellm<1.92" > /tmp/flow-constraints.txt && \
+  uv pip install --quiet \
     -e apps/crm \
     -e apps/flow \
     -e apps/frappe_assistant_core \
     -e apps/dock \
     -e apps/orga \
+    -c /tmp/flow-constraints.txt \
     --python /home/frappe/frappe-bench/env/bin/python && \
   printf 'frappe\ncrm\nflow\nfrappe_assistant_core\ndock\norga\n' > sites/apps.txt && \
   echo "{}" > sites/common_site_config.json && \
